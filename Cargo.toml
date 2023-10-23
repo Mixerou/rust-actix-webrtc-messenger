@@ -1,0 +1,16 @@
+[package]
+name = "actix-webrtc-messenger"
+version = "0.0.1"
+authors = ["Ivan <contact@mixero.dev>"]
+edition = "2021"
+description = "Messenger example with Actix and WebRTC"
+readme = "README.md"
+homepage = "https://github.com/Mixerou/rust-actix-webrtc-messenger"
+repository = "https://github.com/Mixerou/rust-actix-webrtc-messenger"
+license = "MIT"
+
+[dependencies]
+actix-web = "4.4.0"
+dotenv = "0.15.0"
+env_logger = "0.10.0"
+log = "0.4.20"
