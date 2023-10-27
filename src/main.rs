@@ -3,8 +3,9 @@ extern crate log;
 
 use std::env;
 
+use actix_files::Files;
 use actix_web::middleware::{NormalizePath, TrailingSlash};
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{App, HttpServer};
 use dotenv::dotenv;
 
 #[actix_web::main]
@@ -20,7 +21,14 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(NormalizePath::new(TrailingSlash::Trim))
-            .route("/", web::get().to(HttpResponse::Ok))
+            .service(
+                Files::new("", "./static")
+                    .redirect_to_slash_directory()
+                    .index_file("index.html")
+                    .use_etag(true)
+                    .use_last_modified(false)
+                    .prefer_utf8(true),
+            )
     })
     .bind(format!("{ip}:{port}"))?
     .run()

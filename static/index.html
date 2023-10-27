@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="description" content="Messenger example in Rust with Actix and WebRTC">
+    <title>Messenger</title>
+    <link rel="stylesheet/less" type="text/css" href="/styles/index.less">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+            href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,600;6..12,700;6..12,900&display=swap"
+            rel="stylesheet"
+    >
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.2/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/less" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js"></script>
+    <script src="/scripts/index.js"></script>
+</head>
+<body x-data="root">
+<main>
+    <div
+            id="general-information"
+            x-show="!isRoomNameLocallyConfirmed || !isUsernameLocallyConfirmed"
+            x-transition:enter-start="hide"
+            x-transition:leave-end="hide"
+    >
+        <div class="headings" :style="`height: ${generalInformationHeadingHeight}px;`">
+            <h2
+                    class="heading room-name"
+                    x-show="!isRoomNameLocallyConfirmed"
+                    x-transition:enter-start="hide"
+                    x-transition:leave-end="hide"
+            >
+                Enter room name you want to join
+            </h2>
+            <h2
+                    class="heading username"
+                    x-show="isRoomNameLocallyConfirmed"
+                    x-transition:enter-start="hide"
+                    x-transition:leave-end="hide"
+            >
+                Enter your username for this room
+            </h2>
+        </div>
+        <div class="container">
+            <div class="inputs">
+                <input
+                        class="room-name"
+                        type="text"
+                        placeholder="Super room"
+                        maxlength="32"
+                        x-model="roomName"
+                        x-show="!isRoomNameLocallyConfirmed"
+                        x-transition:enter-start="hide"
+                        x-transition:leave-end="hide"
+                        @keydown.enter="onConnect"
+                >
+                <input
+                        class="username"
+                        type="text"
+                        placeholder="World Wide Admin"
+                        maxlength="32"
+                        x-model="username"
+                        x-show="isRoomNameLocallyConfirmed"
+                        x-transition:enter-start="hide"
+                        x-transition:leave-end="hide"
+                        @keydown.enter="onConnect"
+                >
+            </div>
+            <button @click="onConnect">Connect</button>
+        </div>
+    </div>
+
+    <div
+            id="connecting"
+            :data-hide-from="isWebSocketConnected && isWebRTCConnected ? 'app' : 'general-information'"
+            x-show="isRoomNameLocallyConfirmed && isUsernameLocallyConfirmed && (!isWebSocketConnected || !isWebRTCConnected)"
+            x-transition:enter-start="hide"
+            x-transition:leave-end="hide"
+    >
+        <div class="loader"></div>
+    </div>
+
+    <div id="toolbar">
+        <div
+                class="room-name"
+                x-show="isRoomNameLocallyConfirmed"
+                x-transition:enter-start="hide-from"
+                x-transition:leave-end="hide-to"
+        >
+            <h6 x-text="confirmedRoomName"></h6>
+        </div>
+        <button
+                class="members-view-state-switcher"
+                data-variant="square"
+                x-show="canShowApp"
+                x-transition:enter-start="hide-from"
+                x-transition:leave-end="hide-to"
+                @click="appViewState = appViewState === appViewStates.members ? appViewStates.chat : appViewStates.members"
+        >
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path
+                        d="M0 18V16.425C0 15.7083 0.366667 15.125 1.1 14.675C1.83333 14.225 2.8 14 4 14C4.21667 14 4.425 14.0042 4.625 14.0125C4.825 14.0208 5.01667 14.0417 5.2 14.075C4.96667 14.425 4.79167 14.7917 4.675 15.175C4.55833 15.5583 4.5 15.9583 4.5 16.375V18H0ZM6 18V16.375C6 15.8417 6.14583 15.3542 6.4375 14.9125C6.72917 14.4708 7.14167 14.0833 7.675 13.75C8.20833 13.4167 8.84583 13.1667 9.5875 13C10.3292 12.8333 11.1333 12.75 12 12.75C12.8833 12.75 13.6958 12.8333 14.4375 13C15.1792 13.1667 15.8167 13.4167 16.35 13.75C16.8833 14.0833 17.2917 14.4708 17.575 14.9125C17.8583 15.3542 18 15.8417 18 16.375V18H6ZM19.5 18V16.375C19.5 15.9417 19.4458 15.5333 19.3375 15.15C19.2292 14.7667 19.0667 14.4083 18.85 14.075C19.0333 14.0417 19.2208 14.0208 19.4125 14.0125C19.6042 14.0042 19.8 14 20 14C21.2 14 22.1667 14.2208 22.9 14.6625C23.6333 15.1042 24 15.6917 24 16.425V18H19.5ZM4 13C3.45 13 2.97917 12.8042 2.5875 12.4125C2.19583 12.0208 2 11.55 2 11C2 10.4333 2.19583 9.95833 2.5875 9.575C2.97917 9.19167 3.45 9 4 9C4.56667 9 5.04167 9.19167 5.425 9.575C5.80833 9.95833 6 10.4333 6 11C6 11.55 5.80833 12.0208 5.425 12.4125C5.04167 12.8042 4.56667 13 4 13ZM20 13C19.45 13 18.9792 12.8042 18.5875 12.4125C18.1958 12.0208 18 11.55 18 11C18 10.4333 18.1958 9.95833 18.5875 9.575C18.9792 9.19167 19.45 9 20 9C20.5667 9 21.0417 9.19167 21.425 9.575C21.8083 9.95833 22 10.4333 22 11C22 11.55 21.8083 12.0208 21.425 12.4125C21.0417 12.8042 20.5667 13 20 13ZM12 12C11.1667 12 10.4583 11.7083 9.875 11.125C9.29167 10.5417 9 9.83333 9 9C9 8.15 9.29167 7.4375 9.875 6.8625C10.4583 6.2875 11.1667 6 12 6C12.85 6 13.5625 6.2875 14.1375 6.8625C14.7125 7.4375 15 8.15 15 9C15 9.83333 14.7125 10.5417 14.1375 11.125C13.5625 11.7083 12.85 12 12 12Z"
+                />
+            </svg>
+        </button>
+    </div>
+
+    <div
+            id="app"
+            :data-view-state="appViewState"
+            x-show="canShowApp"
+            x-transition:enter-start="hide"
+            x-transition:leave-end="hide"
+    >
+        <div class="chat">
+            <div class="bottom">
+                <input
+                        type="text"
+                        placeholder="Type something and send"
+                        maxlength="1024"
+                        x-model="enteredMessage"
+                        @keydown.enter="sendMessage"
+                >
+                <button @click="sendMessage">Send</button>
+            </div>
+
+            <div class="groups">
+                <template x-for="group in messagesGroupedByAuthor" :key="`messages-group-${group.id}`">
+                    <div
+                            class="group"
+                            x-data="{ isShown: false }"
+                            x-init="$nextTick(() => isShown = true)"
+                            x-show="isShown"
+                            x-transition:enter-start="hide"
+                            x-transition:leave-end="hide"
+                    >
+                        <div class="meta">
+                            <div
+                                    class="avatar"
+                                    x-html="generateAvatar($store.data.users.get(group.authorId)?.username)"
+                            ></div>
+                            <h6 x-text="$store.data.users.get(group.authorId)?.username">Hello</h6>
+                        </div>
+
+                        <div class="messages">
+                            <template x-for="message in group.messages" :key="message.id">
+                                <div
+                                        class="message prepare"
+                                        x-data="{ isShown: false }"
+                                        :class="{ sending: message.isSending }" x-init="$nextTick(() => {
+                                            isShown = true
+                                            setTimeout(() => {
+                                                $el.style.setProperty(
+                                                    '--_height',
+                                                    `${$el.getBoundingClientRect().height}px`,
+                                                )
+                                                isShown = false
+                                                setTimeout(() => {
+                                                    $el.classList.remove('prepare')
+                                                    isShown = true
+                                                }, 40)
+                                            }, 10)
+                                        })"
+                                        x-show="isShown"
+                                        x-transition:enter-start="hide"
+                                        x-transition:leave-end="hide"
+                                >
+                                    <p x-text="message.content"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        <div class="members">
+            <div class="group without-margin">
+                <div class="user me">
+                    <div class="avatar" x-html="generateAvatar(username)"></div>
+                    <span class="username" x-text="$store.data.users.get(me)?.username"></span>
+                </div>
+            </div>
+            <div class="big-group">
+                <div
+                        class="group online"
+                        x-show="(await onlineUsers).length !== 0"
+                        x-transition:enter-start="hide"
+                        x-transition:leave-end="hide"
+                >
+                    <template x-for="user in (await onlineUsers)" :key="user.id">
+                        <div
+                                class="user"
+                                x-data="{ isShown: false }"
+                                x-init="$nextTick(() => isShown = true)"
+                                x-show="isShown && $store.data.users.get(user.id)?.status === userStatuses.online"
+                                x-transition:enter-start="hide"
+                                x-transition:leave-end="hide"
+                        >
+                            <div class="avatar" x-html="generateAvatar(user.username)"></div>
+                            <span class="username" x-text="user.username"></span>
+                        </div>
+                    </template>
+                </div>
+                <div class="group offline" x-show="(await offlineUsers).length !== 0">
+                    <template x-for="user in (await offlineUsers)" :key="user.id">
+                        <div
+                                class="user"
+                                x-data="{ isShown: false }"
+                                x-init="$nextTick(() => isShown = true)"
+                                x-show="isShown && $store.data.users.get(user.id)?.status === userStatuses.offline"
+                                x-transition:enter-start="hide"
+                                x-transition:leave-end="hide"
+                        >
+                            <div class="avatar" x-html="generateAvatar(user.username)"></div>
+                            <span class="username" x-text="user.username"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>
