@@ -16,20 +16,22 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.2/dist/cdn.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/less" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/msgpackr@1.9.9/dist/index.min.js"></script>
+    <script src="/scripts/main.js"></script>
     <script src="/scripts/index.js"></script>
 </head>
 <body x-data="root">
 <main>
     <div
             id="general-information"
-            x-show="!isRoomNameLocallyConfirmed || !isUsernameLocallyConfirmed"
+            x-show="!$store.system.isRoomNameLocallyConfirmed || !$store.system.isUsernameLocallyConfirmed"
             x-transition:enter-start="hide"
             x-transition:leave-end="hide"
     >
-        <div class="headings" :style="`height: ${generalInformationHeadingHeight}px;`">
+        <div class="headings" :style="`height: ${generalInformationHeadingsHeight}px;`">
             <h2
                     class="heading room-name"
-                    x-show="!isRoomNameLocallyConfirmed"
+                    x-show="!$store.system.isRoomNameLocallyConfirmed"
                     x-transition:enter-start="hide"
                     x-transition:leave-end="hide"
             >
@@ -37,46 +39,47 @@
             </h2>
             <h2
                     class="heading username"
-                    x-show="isRoomNameLocallyConfirmed"
+                    x-show="$store.system.isRoomNameLocallyConfirmed"
                     x-transition:enter-start="hide"
                     x-transition:leave-end="hide"
             >
                 Enter your username for this room
             </h2>
         </div>
-        <div class="container">
+        <div class="container" :data-is-error="$store.system.isError">
             <div class="inputs">
+                <div class="error" x-text="$store.system.error"></div>
                 <input
                         class="room-name"
                         type="text"
                         placeholder="Super room"
                         maxlength="32"
-                        x-model="roomName"
-                        x-show="!isRoomNameLocallyConfirmed"
+                        x-model="enteredRoomName"
+                        x-show="!$store.system.isRoomNameLocallyConfirmed"
                         x-transition:enter-start="hide"
                         x-transition:leave-end="hide"
-                        @keydown.enter="onConnect"
+                        @keydown.enter="connect"
                 >
                 <input
                         class="username"
                         type="text"
                         placeholder="World Wide Admin"
                         maxlength="32"
-                        x-model="username"
-                        x-show="isRoomNameLocallyConfirmed"
+                        x-model="enteredUsername"
+                        x-show="$store.system.isRoomNameLocallyConfirmed"
                         x-transition:enter-start="hide"
                         x-transition:leave-end="hide"
-                        @keydown.enter="onConnect"
+                        @keydown.enter="connect"
                 >
             </div>
-            <button @click="onConnect">Connect</button>
+            <button @click="connect">Connect</button>
         </div>
     </div>
 
     <div
             id="connecting"
-            :data-hide-from="isWebSocketConnected && isWebRTCConnected ? 'app' : 'general-information'"
-            x-show="isRoomNameLocallyConfirmed && isUsernameLocallyConfirmed && (!isWebSocketConnected || !isWebRTCConnected)"
+            :data-hide-from="canShowApp ? 'app' : 'general-information'"
+            x-show="$store.system.isRoomNameLocallyConfirmed && $store.system.isUsernameLocallyConfirmed && !canShowApp"
             x-transition:enter-start="hide"
             x-transition:leave-end="hide"
     >
@@ -86,11 +89,11 @@
     <div id="toolbar">
         <div
                 class="room-name"
-                x-show="isRoomNameLocallyConfirmed"
+                x-show="$store.system.isRoomNameLocallyConfirmed"
                 x-transition:enter-start="hide-from"
                 x-transition:leave-end="hide-to"
         >
-            <h6 x-text="confirmedRoomName"></h6>
+            <h6 x-text="lastEnteredRoomName"></h6>
         </div>
         <button
                 class="members-view-state-switcher"
@@ -133,7 +136,7 @@
                             class="group"
                             x-data="{ isShown: false }"
                             x-init="$nextTick(() => isShown = true)"
-                            x-show="isShown"
+                            x-show="isShown && !$store.system.isClearingData"
                             x-transition:enter-start="hide"
                             x-transition:leave-end="hide"
                     >
@@ -142,7 +145,7 @@
                                     class="avatar"
                                     x-html="generateAvatar($store.data.users.get(group.authorId)?.username)"
                             ></div>
-                            <h6 x-text="$store.data.users.get(group.authorId)?.username">Hello</h6>
+                            <h6 x-text="$store.data.users.get(group.authorId)?.username"></h6>
                         </div>
 
                         <div class="messages">
@@ -164,7 +167,7 @@
                                                 }, 40)
                                             }, 10)
                                         })"
-                                        x-show="isShown"
+                                        x-show="isShown && !$store.system.isClearingData"
                                         x-transition:enter-start="hide"
                                         x-transition:leave-end="hide"
                                 >
@@ -179,8 +182,8 @@
         <div class="members">
             <div class="group without-margin">
                 <div class="user me">
-                    <div class="avatar" x-html="generateAvatar(username)"></div>
-                    <span class="username" x-text="$store.data.users.get(me)?.username"></span>
+                    <div class="avatar" x-html="generateAvatar($store.data.users.get($store.data.userId)?.username || enteredUsername)"></div>
+                    <span class="username" x-text="$store.data.users.get($store.data.userId)?.username"></span>
                 </div>
             </div>
             <div class="big-group">
@@ -195,7 +198,7 @@
                                 class="user"
                                 x-data="{ isShown: false }"
                                 x-init="$nextTick(() => isShown = true)"
-                                x-show="isShown && $store.data.users.get(user.id)?.status === userStatuses.online"
+                                x-show="isShown && !$store.system.isClearingData && $store.data.users.get(user.id)?.status === userStatuses.online"
                                 x-transition:enter-start="hide"
                                 x-transition:leave-end="hide"
                         >
@@ -210,7 +213,7 @@
                                 class="user"
                                 x-data="{ isShown: false }"
                                 x-init="$nextTick(() => isShown = true)"
-                                x-show="isShown && $store.data.users.get(user.id)?.status === userStatuses.offline"
+                                x-show="isShown && !$store.system.isClearingData && $store.data.users.get(user.id)?.status === userStatuses.offline"
                                 x-transition:enter-start="hide"
                                 x-transition:leave-end="hide"
                         >
