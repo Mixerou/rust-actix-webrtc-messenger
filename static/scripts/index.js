@@ -110,6 +110,8 @@ const dataStore = {
 }
 
 const systemStore = {
+    isDebug: false,
+
     isRoomNameLocallyConfirmed: false,
     isUsernameLocallyConfirmed: false,
 
@@ -118,6 +120,9 @@ const systemStore = {
 
     webSocket: null,
     webSocketTimeout: null,
+    webSocketPing: null,
+    webSocketHeartbeatMessageId: null,
+    webSocketLastHeartbeatAt: null,
     webSocketHeartbeatInterval: null,
     isWebSocketConnected: false,
 
@@ -169,7 +174,6 @@ const systemStore = {
 
                 switch (payload?.t) {
                     case webSocketPayloadTypes.response:
-
                         const setError = ({error, resetRoomNameConfirmation = false}) => {
                             this.isUsernameLocallyConfirmed = false
                             this.error = error
@@ -226,8 +230,11 @@ const systemStore = {
                         localStorage.setItem('token', payload.token)
 
                         this.webSocketHeartbeatInterval = setInterval(() => {
+                            this.webSocketHeartbeatMessageId = messageId
+                            this.webSocketLastHeartbeatAt = Date.now()
+
                             sendWebSocketMessage(webSocketOpCodes.heartBeat)
-                        }, 30e3)
+                        }, this.isDebug ? 1e3 : 30e3)
 
                         sendWebSocketMessage(webSocketOpCodes.request, {
                             t: webSocketPayloadTypes.requestGetRoomRtcOffer,
@@ -246,9 +253,17 @@ const systemStore = {
                         })
 
                         break
+                    default:
+                        if (this.isDebug && data.i === this.webSocketHeartbeatMessageId) {
+                            this.webSocketPing = Date.now() - this.webSocketLastHeartbeatAt
+                            return
+                        }
                 }
             }
             this.webSocket.onclose = event => {
+                this.webSocketPing = null
+                this.webSocketHeartbeatMessageId = null
+                this.webSocketLastHeartbeatAt = null
                 this.isWebSocketConnected = false
                 this.isWebRTCConnected = false
 
@@ -438,8 +453,9 @@ const rootData = {
         resizeObserver.observe(document.querySelector('#general-information > .headings > h2.room-name'))
         resizeObserver.observe(document.querySelector('#general-information > .headings > h2.username'))
 
-        window.addEventListener('popstate', () => this.checkParamRoomName())
+        this.$store.system.isDebug = new URL(document.URL).searchParams.has('debug', 'true')
 
+        window.addEventListener('popstate', () => this.checkParamRoomName())
         this.checkParamRoomName(true)
     },
 }

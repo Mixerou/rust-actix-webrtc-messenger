@@ -169,6 +169,11 @@ main {
   top: 1rem;
   left: var(--_app-left);
   width: calc(100% - var(--_app-left) * 2);
+  height: 2.75rem;
+
+  .screen(medium; {
+    height: 2.5rem;
+  });
 
   .hide-from {
     opacity: 0;
@@ -207,6 +212,27 @@ main {
     .screen(medium; {
       display: none;
     });
+  }
+
+  .debug {
+    position: absolute;
+    left: 0.25rem;
+    bottom: -1rem;
+    opacity: 0.5;
+
+    .screen(medium; {
+      bottom: -1.5rem;
+    });
+
+    p {
+      line-height: var(--label-line-height);
+      font-size: var(--label-font-size);
+      transition: var(--fast-transition-duration);
+
+      &.hide {
+        opacity: 0;
+      }
+    }
   }
 }
 

@@ -109,6 +109,16 @@
                 />
             </svg>
         </button>
+        <template x-if="$store.system.isDebug">
+            <div class="debug">
+                <p
+                        x-show="$store.system.isWebSocketConnected"
+                        x-transition:enter-start="hide"
+                        x-transition:leave-end="hide"
+                        x-text="`WebSocket Ping: ${$store.system.webSocketPing === null ? 'measuring...' : $store.system.webSocketPing + 'ms'}`"
+                ></p>
+            </div>
+        </template>
     </div>
 
     <div
