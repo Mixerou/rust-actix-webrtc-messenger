@@ -2,9 +2,9 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::time::Instant;
 
-use actix::prelude::{Actor, Context, Handler, Recipient};
+use actix::prelude::{Actor, Context, Handler};
 use actix::{
-    ActorFutureExt, AsyncContext, ContextFutureSpawner, Message, Running, Supervised,
+    ActorFutureExt, Addr, AsyncContext, ContextFutureSpawner, Message, Running, Supervised,
     SystemService, WrapFuture,
 };
 use actix_web_actors::ws::WebsocketContext;
@@ -20,7 +20,7 @@ use crate::web_socket::message::{
 
 #[derive(Debug, Default)]
 pub struct WebSocket {
-    connections: HashMap<i64, Recipient<WebSocketMessage>>,
+    connections: HashMap<i64, Addr<WebSocketConnection>>,
 }
 
 impl WebSocket {
@@ -54,7 +54,7 @@ impl WebSocket {
                 id: message.id,
                 connection_id: connection.id,
                 token: session.token,
-                recipient: context.address().recipient(),
+                address: context.address(),
             };
 
             connection.session_id = Some(session.id);
@@ -131,7 +131,7 @@ impl WebSocket {
             .spawn(context);
     }
 
-    fn get_connection(&self, id: &i64) -> Result<&Recipient<WebSocketMessage>, AppError> {
+    fn get_connection(&self, id: &i64) -> Result<&Addr<WebSocketConnection>, AppError> {
         match self.connections.get(id) {
             Some(connection) => Ok(connection),
             None => Err(AppError::new(
@@ -187,7 +187,7 @@ impl Handler<AuthorizationMessage> for WebSocket {
 
     fn handle(&mut self, message: AuthorizationMessage, _: &mut Context<Self>) -> Self::Result {
         self.connections
-            .insert(message.connection_id, message.recipient);
+            .insert(message.connection_id, message.address);
 
         let connection = WebSocket::get_connection(self.borrow(), &message.connection_id)?;
 

@@ -25,7 +25,7 @@ pub struct WebSocketConnection {
 
 impl WebSocketConnection {
     pub fn new(encoding: Encoding) -> Self {
-        WebSocketConnection {
+        Self {
             id: snowflake_generator::generate(),
             session_id: None,
             last_heartbeat_at: Instant::now(),

@@ -1,8 +1,9 @@
-use actix::{Message, Recipient};
+use actix::{Addr, Message};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::error::AppError;
+use crate::web_socket::connection::WebSocketConnection;
 pub use crate::web_socket::message::payload::*;
 
 mod payload;
@@ -48,7 +49,7 @@ pub struct AuthorizationMessage {
     pub id: i64,
     pub connection_id: i64,
     pub token: String,
-    pub recipient: Recipient<WebSocketMessage>,
+    pub address: Addr<WebSocketConnection>,
 }
 
 #[derive(Debug, Message)]
