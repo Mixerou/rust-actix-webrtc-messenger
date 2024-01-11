@@ -7,8 +7,9 @@ const webSocketOpCodes = {
 }
 const webSocketPayloadTypes = {
     // Request
-    requestGetRoomRtcOffer: 10,
-    requestPostRoomRtcAnswer: 11,
+    requestGetRoomSDPOffer: 10,
+    requestPostRoomSDPAnswer: 11,
+    requestPostRoomICECandidate: 12, // Reserved
 
     // Response
     response: 20,
@@ -29,6 +30,31 @@ const webSocketCloseErrors = {
     authenticationFailed: 4004,
     alreadyAuthenticated: 4005,
 }
+const webRTCOpCodes = {
+    heartBeat: 0,
+    request: 1,
+    response: 2,
+    error: 3,
+    dispatch: 4,
+    hello: 5,
+}
+const webRTCPayloadTypes = {
+    // Request
+    requestPostMessage: 10,
+
+    // Response
+    response: 20,
+
+    // Dispatch
+    dispatchUserUpdate: 40,
+    dispatchMessageUpdate: 41,
+
+    // Hello
+    hello: 50,
+
+    // Other
+    null: 0,
+}
 const serverErrors = {
     // Default HTTP errors
     badRequest: 400,
@@ -44,6 +70,8 @@ const serverErrors = {
     roomNameTooLong: 3002,
     usernameTooShort: 3003,
     usernameTooLong: 3004,
+    messageContentTooShort: 3005,
+    messageContentTooLong: 3006,
 
     // Invalid body or something else
     usernameTaken: 4001,

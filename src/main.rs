@@ -12,6 +12,7 @@ use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::snowflake_generator;
+use crate::web_rtc::actor::WebRtc;
 use crate::web_socket::actor::WebSocket;
 
 mod constants;
@@ -19,6 +20,7 @@ mod database;
 mod error;
 mod services;
 mod utils;
+mod web_rtc;
 mod web_socket;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
@@ -38,6 +40,7 @@ async fn main() -> std::io::Result<()> {
     let ip = env::var("MESSENGER_IP").unwrap_or_else(|_| "127.0.0.1".into());
     let port = env::var("MESSENGER_PORT").unwrap_or_else(|_| "8080".into());
 
+    WebRtc::from_registry();
     WebSocket::from_registry();
 
     info!("Starting server on {ip} with port {port}");

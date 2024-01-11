@@ -58,3 +58,7 @@ pub struct DisconnectionMessage {
     pub connection_id: i64,
     pub registered_room_id: Option<i64>,
 }
+
+#[derive(Debug, Message)]
+#[rtype(result = "Result<(), AppError>")]
+pub struct CloseConnectionMessage;

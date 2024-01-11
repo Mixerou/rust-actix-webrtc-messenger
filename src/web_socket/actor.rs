@@ -11,7 +11,6 @@ use actix_web_actors::ws::WebsocketContext;
 
 use crate::error::{AppError, AppErrorTemplate, WebSocketCloseError};
 use crate::services::room;
-use crate::services::room::model::Room;
 use crate::services::session::model::Session;
 use crate::web_socket::connection::WebSocketConnection;
 use crate::web_socket::message::{
@@ -80,12 +79,15 @@ impl WebSocket {
             Opcode::Request => {
                 let handle = match message.payload {
                     // Room
-                    WebSocketMessagePayload::RequestGetRoomRtcOffer { .. } => {
-                        room::handlers::get_rtc_offer
+                    WebSocketMessagePayload::RequestGetRoomSdpOffer { .. } => {
+                        room::handlers::get_sdp_offer
                     }
-                    WebSocketMessagePayload::RequestPostRoomRtcAnswer { .. } => {
-                        room::handlers::post_rtc_answer
+                    WebSocketMessagePayload::RequestPostRoomSdpAnswer { .. } => {
+                        room::handlers::post_sdp_answer
                     }
+                    // WebSocketMessagePayload::RequestPostRoomIceCandidate { .. } => {
+                    //     room::handlers::post_ice_candidate
+                    // }
 
                     // Other
                     _ => return Err(AppErrorTemplate::BadRequest(None).into()),
@@ -208,12 +210,6 @@ impl Handler<DisconnectionMessage> for WebSocket {
     type Result = Result<(), AppError>;
 
     fn handle(&mut self, message: DisconnectionMessage, _: &mut Context<Self>) -> Self::Result {
-        // TODO: Send message to WebRTC Actor
-
-        if let Some(room_id) = message.registered_room_id {
-            Room::unregister_connection(&message.connection_id, &room_id)?;
-        }
-
         self.connections.remove(&message.connection_id);
 
         Ok(())

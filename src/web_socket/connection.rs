@@ -1,18 +1,23 @@
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use actix::{Actor, ActorContext, AsyncContext, Handler, Running, StreamHandler, SystemService};
+use actix::{
+    Actor, ActorContext, Addr, AsyncContext, Handler, Running, StreamHandler, SystemService,
+};
 use actix_web_actors::ws;
 use actix_web_actors::ws::{CloseCode, CloseReason, ProtocolError, WebsocketContext};
 use rmp_serde::decode::Error as RmpSerdeDecodeError;
 
 use crate::constants::{WEB_SOCKET_CLIENT_TIMEOUT, WEB_SOCKET_HEARTBEAT_INTERVAL};
 use crate::error::{AppError, WebSocketCloseError};
+use crate::services::room::model::Room;
 use crate::utils::snowflake_generator;
+use crate::web_rtc::connection::WebRtcConnection;
 use crate::web_socket::actor::WebSocket;
 use crate::web_socket::message::{
-    DisconnectionMessage, Opcode, WebSocketMessage, WebSocketMessagePayload,
+    CloseConnectionMessage, DisconnectionMessage, Opcode, WebSocketMessage, WebSocketMessagePayload,
 };
-use crate::Encoding;
+use crate::{web_rtc, Encoding};
 
 #[derive(Debug)]
 pub struct WebSocketConnection {
@@ -21,6 +26,8 @@ pub struct WebSocketConnection {
     pub last_heartbeat_at: Instant,
     pub encoding: Encoding,
     pub registered_room_id: Option<i64>,
+    pub registered_user_id: Option<i64>,
+    pub web_rtc_connection: Arc<Mutex<Option<Addr<WebRtcConnection>>>>,
 }
 
 impl WebSocketConnection {
@@ -31,6 +38,8 @@ impl WebSocketConnection {
             last_heartbeat_at: Instant::now(),
             encoding,
             registered_room_id: None,
+            registered_user_id: None,
+            web_rtc_connection: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -101,6 +110,17 @@ impl Actor for WebSocketConnection {
     }
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
+        if let Ok(web_rtc_connection) = self.web_rtc_connection.lock() {
+            if let Some(ref web_rtc_connection) = *web_rtc_connection {
+                web_rtc_connection.do_send(web_rtc::message::CloseConnectionMessage);
+            }
+        }
+
+        if let (Some(room_id), Some(user_id)) = (&self.registered_room_id, &self.registered_user_id)
+        {
+            let _ = Room::unregister_connection(&self.id, room_id, user_id);
+        }
+
         WebSocket::from_registry().do_send(DisconnectionMessage {
             connection_id: self.id,
             registered_room_id: self.registered_room_id,
@@ -147,6 +167,16 @@ impl Handler<WebSocketMessage> for WebSocketConnection {
 
     fn handle(&mut self, message: WebSocketMessage, context: &mut Self::Context) -> Self::Result {
         WebSocketConnection::send_message(self.encoding, message, context)?;
+
+        Ok(())
+    }
+}
+
+impl Handler<CloseConnectionMessage> for WebSocketConnection {
+    type Result = Result<(), AppError>;
+
+    fn handle(&mut self, _: CloseConnectionMessage, context: &mut Self::Context) -> Self::Result {
+        context.stop();
 
         Ok(())
     }

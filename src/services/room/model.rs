@@ -54,7 +54,7 @@ impl Room {
         Err(AppErrorTemplate::NotFound(None).into())
     }
 
-    pub fn register_connection(id: i64, room_id: &i64) -> Result<(), AppError> {
+    pub fn register_connection(id: i64, room_id: &i64, user_id: &i64) -> Result<(), AppError> {
         let database = database::get();
 
         if let Some((room_id, room)) = database
@@ -65,6 +65,8 @@ impl Room {
         {
             let mut transaction = database.begin()?;
             let mut room = room;
+
+            User::register_connection(id, user_id)?;
 
             room.active_connection_ids.push(id);
             transaction.update(&room_id, &room)?;
@@ -76,7 +78,7 @@ impl Room {
         Err(AppErrorTemplate::NotFound(None).into())
     }
 
-    pub fn unregister_connection(id: &i64, room_id: &i64) -> Result<(), AppError> {
+    pub fn unregister_connection(id: &i64, room_id: &i64, user_id: &i64) -> Result<(), AppError> {
         let database = database::get();
 
         if let Some((room_id, room)) = database
@@ -87,6 +89,8 @@ impl Room {
         {
             let mut transaction = database.begin()?;
             let mut room = room;
+
+            User::unregister_connection(id, user_id)?;
 
             room.active_connection_ids
                 .retain(|&active_id| &active_id != id);

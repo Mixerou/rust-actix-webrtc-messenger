@@ -1,5 +1,3 @@
-const fastTransitionDuration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fast-transition-duration').split('s')[0]) * 1000
-
 const appViewStates = {
     chat: 0,
     members: 1,
@@ -18,94 +16,15 @@ const dataStore = {
         this.users = new Map()
         this.messages = new Map()
     },
-    insertFakeData(enteredUsername) {
-        this.init()
-
-        Alpine.store("system").isClearingData = false
-
-        this.userId = '6'
-
-        // Fake users
-        this.users.set('0', {
-            id: '0',
-            username: 'John',
-            status: userStatuses.online,
-        })
-        this.users.set('1', {
-            id: '1',
-            username: 'Flappy Brow',
-            status: userStatuses.offline,
-        })
-        this.users.set('2', {
-            id: '2',
-            username: 'Vouter',
-            status: userStatuses.offline,
-        })
-        this.users.set('3', {
-            id: '3',
-            username: 'Mr. Admin',
-            status: userStatuses.online,
-        })
-        this.users.set('4', {
-            id: '4',
-            username: 'Viktoriya',
-            status: userStatuses.online,
-        })
-        this.users.set('5', {
-            id: '5',
-            username: 'Guest',
-            status: userStatuses.online,
-        })
-        this.users.set('6', {
-            id: '6',
-            username: enteredUsername,
-            status: userStatuses.online,
-        })
-
-        // Fake messages
-        this.messages.set('100', {
-            id: '100',
-            authorId: '0',
-            content: 'Hey everyone! I just came across this fascinating article about the future of artificial intelligence. It\'s mind-blowing how quickly technology is advancing. 😲',
-        })
-        this.messages.set('101', {
-            id: '101',
-            authorId: '0',
-            content: 'I\'m curious to hear your thoughts on the ethical implications of AI. Do you think we\'re doing enough to ensure responsible development?',
-        })
-        this.messages.set('102', {
-            id: '102',
-            authorId: '0',
-            content: 'By the way, I\'ve been experimenting with a new machine learning algorithm for natural language processing. It\'s been a real challenge, but also a lot of fun. Anyone else into AI development here?',
-        })
-        this.messages.set('103', {
-            id: '103',
-            authorId: '4',
-            content: 'Thanks for sharing that article, John! I read it earlier today, and it\'s mind-blowing indeed. The ethical concerns around AI are a hot topic right now. I think we\'re making progress, but there\'s still a long way to go in ensuring responsible AI development.',
-        })
-        this.messages.set('104', {
-            id: '104',
-            authorId: '3',
-            content: 'Hey, I\'m not as deep into AI as you guys, but I find the topic really interesting. The ethical discussions are crucial, and I think it\'s vital that we prioritize responsible AI.',
-        })
-        this.messages.set('105', {
-            id: '105',
-            authorId: '3',
-            content: 'Viktoriya, your chatbot project sounds intriguing. Can you tell me more about it?',
-        })
-        this.messages.set('106', {
-            id: '106',
-            authorId: '0',
-            content: 'That sounds awesome, Viktoriya! I\'d love to collaborate on the chatbot project. I\'ll definitely check out your GitHub repo.',
-        })
-        this.messages.set('107', {
-            id: '107',
-            authorId: '0',
-            content: 'Also, for anyone interested, I recommend checking out this AI podcast I recently discovered. They discuss some really thought-provoking topics related to AI ethics and development. 🎙️🤖',
-        })
-    },
     clear() {
         Alpine.store("system").isClearingData = true
+
+        setTimeout(() => {
+            this.users.clear()
+            this.messages.clear()
+
+            Alpine.store("system").isClearingData = false
+        }, 1e3)
     },
 }
 
@@ -126,11 +45,28 @@ const systemStore = {
     webSocketHeartbeatInterval: null,
     isWebSocketConnected: false,
 
+    webRTCPeerConnection: null,
+    webRTCDataChannel: null,
+    webRTCLastMessageId: 0,
+    webRTCTimeout: null,
+    webRTCPing: null,
+    isWebRTCForceClosing: false,
+    webRTCHeartbeatMessageId: null,
+    webRTCLastHeartbeatAt: null,
+    webRTCHeartbeatInterval: null,
     isWebRTCConnected: false,
 
     clearDataTimeout: null,
     isClearingData: false,
 
+    sendWebRTCMessage(opCode, payload) {
+        if (!this.webRTCPeerConnection || !this.webRTCDataChannel) return
+
+        const message = {i: this.webRTCLastMessageId++, o: opCode}
+        if (payload) message.p = payload
+
+        this.webRTCDataChannel.send(msgpackr.pack(message))
+    },
     connect(roomName, username) {
         const url = new URL(document.URL)
         let messageId = 0
@@ -145,8 +81,130 @@ const systemStore = {
         }
 
         const openWebRTCConnection = () => {
-            this.isWebRTCConnected = true
-            Alpine.store('data').insertFakeData(username)
+            if (this.webRTCPeerConnection) {
+                this.webRTCPeerConnection.close()
+                this.webRTCPeerConnection = null
+            }
+            if (this.webRTCDataChannel) {
+                this.webRTCDataChannel.close()
+                this.webRTCDataChannel = null
+            }
+
+            clearTimeout(this.webRTCTimeout)
+            clearInterval(this.webRTCHeartbeatInterval)
+
+            const webRTCReconnect = () => {
+                this.isWebRTCConnected = false
+
+                Alpine.store('data').clear()
+                sendWebSocketMessage(webSocketOpCodes.request, {
+                    t: webSocketPayloadTypes.requestGetRoomSDPOffer,
+                    ['room_name']: roomName,
+                    username,
+                })
+            }
+
+            this.webRTCPeerConnection = new RTCPeerConnection({
+                iceServers: [{urls: 'stun:stun.l.google.com:19302'}]
+            })
+
+            this.webRTCPeerConnection.ondatachannel = event => {
+                const reconnect = () => {
+                    if (this.isWebRTCForceClosing) return
+
+                    webRTCReconnect()
+                    this.isWebRTCForceClosing = false
+                }
+
+                this.webRTCDataChannel = event.channel
+                this.webRTCDataChannel.onmessage = async message => {
+                    const data = msgpackr.unpack(new Uint8Array(message.data instanceof Blob ? await message.data.arrayBuffer() : message.data))
+                    const payload = data.p
+
+                    switch (payload?.t) {
+                        case webRTCPayloadTypes.dispatchUserUpdate:
+                            Alpine.store('data').users.set(payload.user.id, {
+                                id: payload.user.id,
+                                username: payload.user.username,
+                                status: payload.user.status,
+                            })
+
+                            break
+                        case webRTCPayloadTypes.dispatchMessageUpdate:
+                            Alpine.store('data').messages.set(payload.message.id, {
+                                id: payload.message.id,
+                                authorId: payload.message['author_id'],
+                                content: payload.message.content,
+                            })
+
+                            break
+                        case webRTCPayloadTypes.hello:
+                            Alpine.store('data').userId = payload['user_id']
+
+                            for (const user of payload.users) {
+                                Alpine.store('data').users.set(user.id, {
+                                    id: user.id,
+                                    username: user.username,
+                                    status: user.status,
+                                })
+                            }
+
+                            for (const message of payload.messages) {
+                                Alpine.store('data').messages.set(message.id, {
+                                    id: message.id,
+                                    authorId: message['author_id'],
+                                    content: message.content,
+                                })
+                            }
+                            break
+                        default:
+                            if (this.isDebug && data.i === this.webRTCHeartbeatMessageId) {
+                                this.webRTCPing = Date.now() - this.webRTCLastHeartbeatAt
+                                return
+                            }
+                    }
+                }
+                this.webRTCDataChannel.onclose = () => {
+                    this.webRTCPing = null
+                    this.webRTCLastMessageId = 0
+                    this.webRTCHeartbeatMessageId = null
+                    this.webRTCLastHeartbeatAt = null
+                    this.isWebRTCConnected = false
+
+                    reconnect()
+                }
+                this.webRTCDataChannel.onerror = () => reconnect()
+                this.isWebRTCConnected = true
+
+                this.webRTCHeartbeatInterval = setInterval(() => {
+                    this.webRTCHeartbeatMessageId = this.webRTCLastMessageId
+                    this.webRTCLastHeartbeatAt = Date.now()
+
+                    this.sendWebRTCMessage(webRTCOpCodes.heartBeat)
+                }, this.isDebug ? 1e3 : 5e3)
+            }
+            // this.webRTCPeerConnection.onicecandidate = event => {
+            //     const candidate = event.candidate
+            //
+            //     if (!candidate) return
+            //
+            //     sendWebSocketMessage(webSocketOpCodes.request, {
+            //         t: webSocketPayloadTypes.requestPostRoomICECandidate,
+            //         candidate: candidate.candidate,
+            //         'sdp_mid': candidate.sdpMid,
+            //         'sdp_m_line_index': candidate.sdpMLineIndex,
+            //         'username_fragment': candidate.usernameFragment,
+            //     })
+            // }
+            this.webRTCPeerConnection.onicecandidateerror = error => console.error('ICE Candidate Error', error)
+            this.webRTCPeerConnection.onconnectionstatechange = event => {
+                clearTimeout(this.webRTCTimeout)
+
+                if (['failed', 'disconnected'].includes(event.target.connectionState)) {
+                    webRTCReconnect()
+                }
+            }
+            this.webRTCPeerConnection.onnegotiationneeded = event => console.warn('Negotiation Needed', event)
         }
 
         const openWebSocketConnection = () => {
@@ -168,7 +226,7 @@ const systemStore = {
                     token: localStorage.getItem('token') || ''
                 })
             }
-            this.webSocket.onmessage = message => {
+            this.webSocket.onmessage = async message => {
                 const data = msgpackr.unpack(new Uint8Array(message.data))
                 const payload = data.p
 
@@ -237,7 +295,7 @@ const systemStore = {
                         }, this.isDebug ? 1e3 : 30e3)
 
                         sendWebSocketMessage(webSocketOpCodes.request, {
-                            t: webSocketPayloadTypes.requestGetRoomRtcOffer,
+                            t: webSocketPayloadTypes.requestGetRoomSDPOffer,
                             ['room_name']: roomName,
                             username,
                         })
@@ -246,10 +304,16 @@ const systemStore = {
                     case webSocketPayloadTypes.responseRoomRtcOffer:
                         openWebRTCConnection()
 
+                        await this.webRTCPeerConnection.setRemoteDescription({
+                            type: 'offer',
+                            sdp: payload.sdp,
+                        })
+                        const answer = await this.webRTCPeerConnection.createAnswer()
+                        await this.webRTCPeerConnection.setLocalDescription(answer)
+
                         sendWebSocketMessage(webSocketOpCodes.request, {
-                            t: webSocketPayloadTypes.requestGetRoomRtcOffer,
-                            // TODO: Send real SDP
-                            sdp: '',
+                            t: webSocketPayloadTypes.requestPostRoomSDPAnswer,
+                            sdp: answer.sdp,
                         })
 
                         break
@@ -267,17 +331,24 @@ const systemStore = {
                 this.isWebSocketConnected = false
                 this.isWebRTCConnected = false
 
+                clearTimeout(this.webSocketTimeout)
+                clearInterval(this.webSocketHeartbeatInterval)
+
                 if (event.code !== 1005) {
-                    this.webSocketTimeout = setTimeout(() => openWebSocketConnection(), 1e3)
-                } else {
-                    this.isUsernameLocallyConfirmed = false
+                    this.webSocketTimeout = setTimeout(openWebSocketConnection, 1e3)
+                }
+
+                if (this.webRTCPeerConnection) {
+                    this.webRTCPeerConnection.close()
+                    this.webRTCPeerConnection = null
+                    this.webRTCDataChannel = null
                 }
 
                 Alpine.store('data').clear()
             }
             this.webSocket.onerror = () => {
                 this.isWebSocketConnected = false
-                this.webSocketTimeout = setTimeout(() => openWebSocketConnection(), 1e3)
+                this.webSocketTimeout = setTimeout(openWebSocketConnection, 1e3)
             }
         }
 
@@ -288,6 +359,17 @@ const systemStore = {
             this.webSocket.close()
             this.webSocket = null
         }
+
+        if (this.webRTCPeerConnection) {
+            this.isWebRTCForceClosing = true
+
+            this.webRTCPeerConnection.close()
+            this.webRTCPeerConnection = null
+            this.webRTCDataChannel = null
+        }
+
+        this.isUsernameLocallyConfirmed = false
+        Alpine.store('data').clear()
     },
 }
 
@@ -328,23 +410,10 @@ const rootData = {
         this.enteredMessage = this.enteredMessage.trim()
         if (this.enteredMessage === '') return
 
-        const id = Date.now().toString()
-        const content = this.enteredMessage
-        this.$store.data.messages.set(id, {
-            id: id,
-            authorId: this.$store.data.userId,
-            content: content,
-            isSending: true,
+        this.$store.system.sendWebRTCMessage(webRTCOpCodes.request, {
+            t: webRTCPayloadTypes.requestPostMessage,
+            content: this.enteredMessage,
         })
-
-        // Fake delivery
-        setTimeout(() => {
-            this.$store.data.messages.set(id, {
-                id: id,
-                authorId: this.$store.data.userId,
-                content: content,
-            })
-        }, Math.floor(Math.random() * 1e3))
 
         this.enteredMessage = ''
     },
@@ -363,7 +432,7 @@ const rootData = {
 
         return new Promise(resolve => setTimeout(
             () => resolve(users.sort((a, b) => a.username.localeCompare(b.username))),
-            fastTransitionDuration,
+            parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fast-transition-duration').split('s')[0]) * 1000,
         ))
     },
     get offlineUsers() {
@@ -375,7 +444,7 @@ const rootData = {
 
         return new Promise(resolve => setTimeout(
             () => resolve(users.sort((a, b) => a.username.localeCompare(b.username))),
-            fastTransitionDuration,
+            parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fast-transition-duration').split('s')[0]) * 1000,
         ))
     },
     get messagesGroupedByAuthor() {

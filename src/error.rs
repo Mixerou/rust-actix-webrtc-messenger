@@ -7,6 +7,8 @@ use rmp_serde::decode::Error as RmpSerdeDecodeError;
 use rmp_serde::encode::Error as RmpSerdeEncodeError;
 use serde::Deserialize;
 use structsy::StructsyError;
+use webrtc::data::Error as WebRtcDataError;
+use webrtc::Error as WebRtcError;
 
 use crate::web_socket::actor::WebSocket;
 use crate::web_socket::connection::WebSocketConnection;
@@ -17,6 +19,8 @@ pub enum AppErrorKind {
     RmpSerdeDecodeError(RmpSerdeDecodeError),
     RmpSerdeEncodeError(RmpSerdeEncodeError),
     StructsyError(StructsyError),
+    WebRtcDataError(WebRtcDataError),
+    WebRtcError(WebRtcError),
     Other(Option<String>),
 }
 
@@ -121,6 +125,28 @@ impl From<StructsyError> for AppError {
     }
 }
 
+impl From<WebRtcDataError> for AppError {
+    fn from(error: WebRtcDataError) -> Self {
+        AppError::new(
+            500,
+            None,
+            format!("WebRTC Data error: {error}"),
+            Some(AppErrorKind::WebRtcDataError(error)),
+        )
+    }
+}
+
+impl From<WebRtcError> for AppError {
+    fn from(error: WebRtcError) -> Self {
+        AppError::new(
+            500,
+            None,
+            format!("WebRTC error: {error}"),
+            Some(AppErrorKind::WebRtcError(error)),
+        )
+    }
+}
+
 impl fmt::Display for AppError {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str(self.message.as_str())
@@ -153,15 +179,19 @@ app_error_template! {
     (401, None, Unauthorized, "Unauthorized");
     (404, None, NotFound, "Not found");
     (409, None, Conflict, "Method not allowed");
+    (500, None, InternalServerError, "Internal server error");
 
     // Minimum / Maximum number of ... reached
     (400, Some(3001), RoomNameTooShort, "Room name is too short");
     (400, Some(3002), RoomNameTooLong, "Room name is too long");
     (400, Some(3003), UsernameTooShort, "Username is too short");
     (400, Some(3004), UsernameTooLong, "Username is too long");
+    (400, Some(3005), MessageContentTooShort, "Message content is too short");
+    (400, Some(3006), MessageContentTooLong, "Message content is too long");
 
     // Invalid body or something else
     (400, Some(4001), UsernameTaken, "The username is taken");
+    (400, Some(4002), WebRtcOfferNotRequested, "WebRTC offer wasn't requested");
 }
 
 macro_rules! websocket_close_error {

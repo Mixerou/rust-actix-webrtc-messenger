@@ -117,6 +117,12 @@
                         x-transition:leave-end="hide"
                         x-text="`WebSocket Ping: ${$store.system.webSocketPing === null ? 'measuring...' : $store.system.webSocketPing + 'ms'}`"
                 ></p>
+                <p
+                        x-show="$store.system.isWebRTCConnected"
+                        x-transition:enter-start="hide"
+                        x-transition:leave-end="hide"
+                        x-text="`WebRTC Ping: ${$store.system.webRTCPing === null ? 'measuring...' : $store.system.webRTCPing + 'ms'}`"
+                ></p>
             </div>
         </template>
     </div>
@@ -217,7 +223,7 @@
                         </div>
                     </template>
                 </div>
-                <div class="group offline" x-show="(await offlineUsers).length !== 0">
+                <div class="group offline">
                     <template x-for="user in (await offlineUsers)" :key="user.id">
                         <div
                                 class="user"

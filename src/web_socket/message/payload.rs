@@ -10,13 +10,19 @@ payload_enum_helper! {
     #[derive(Clone, Debug, Default)]
     enum WebSocketMessagePayload {
         // Opcode: Request
-        RequestGetRoomRtcOffer { room_name: String, username: String, } = "10" | 10,
-        RequestPostRoomRtcAnswer { sdp: String, } = "11" | 11,
+        RequestGetRoomSdpOffer { room_name: String, username: String, } = "10" | 10,
+        RequestPostRoomSdpAnswer { sdp: String, } = "11" | 11,
+        RequestPostRoomIceCandidate {
+            candidate: String,
+            sdp_mid: Option<String>,
+            sdp_m_line_index: Option<u16>,
+            username_fragment: Option<String>,
+        } = "12" | 12, // Reserved
 
         // Opcode: Response
         Response { code: u32, message: String, } = "20" | 20,
         ResponseSession { token: String, } = "21" | 21,
-        ResponseRoomRtcOffer { connection_id: String, sdp: String, } = "22" | 22,
+        ResponseRoomRtcOffer { sdp: String, } = "22" | 22,
 
         // Opcode: Authorize
         Authorize { token: String, } = "30" | 30,
