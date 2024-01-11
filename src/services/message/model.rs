@@ -1,6 +1,6 @@
 use actix::SystemService;
 use serde::{Deserialize, Serialize};
-use structsy::derive::{Persistent, queries};
+use structsy::derive::{queries, Persistent};
 use structsy::StructsyTx;
 
 use crate::constants::{MESSAGE_CONTENT_MAX_LENGTH, MESSAGE_CONTENT_MIN_LENGTH};
