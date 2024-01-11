@@ -84,7 +84,7 @@ impl WebSocketConnection {
         let connection_id = message.connection_id;
 
         if let Err(error) = WebSocket::handle_message(self, message, context) {
-            WebSocketConnection::send_message(
+            let _ = WebSocketConnection::send_message(
                 self.encoding,
                 WebSocketMessage {
                     id,
@@ -96,8 +96,7 @@ impl WebSocketConnection {
                     },
                 },
                 context,
-            )
-            .unwrap();
+            );
         }
     }
 }
