@@ -17,13 +17,13 @@ const dataStore = {
         this.messages = new Map()
     },
     clear() {
-        Alpine.store("system").isClearingData = true
+        Alpine.store('system').isClearingData = true
 
         setTimeout(() => {
             this.users.clear()
             this.messages.clear()
 
-            Alpine.store("system").isClearingData = false
+            Alpine.store('system').isClearingData = false
         }, 1e3)
     },
 }
@@ -59,10 +59,10 @@ const systemStore = {
     clearDataTimeout: null,
     isClearingData: false,
 
-    sendWebRTCMessage(opCode, payload) {
+    sendWebRTCMessage(opcode, payload) {
         if (!this.webRTCPeerConnection || !this.webRTCDataChannel) return
 
-        const message = {i: this.webRTCLastMessageId++, o: opCode}
+        const message = { i: this.webRTCLastMessageId++, o: opcode }
         if (payload) message.p = payload
 
         this.webRTCDataChannel.send(msgpackr.pack(message))
@@ -71,10 +71,10 @@ const systemStore = {
         const url = new URL(document.URL)
         let messageId = 0
 
-        const sendWebSocketMessage = (opCode, payload) => {
+        const sendWebSocketMessage = (opcode, payload) => {
             if (!this.webSocket) return
 
-            const message = {i: messageId++, o: opCode}
+            const message = { i: messageId++, o: opcode }
             if (payload) message.p = payload
 
             this.webSocket.send(msgpackr.pack(message))
@@ -97,7 +97,7 @@ const systemStore = {
                 this.isWebRTCConnected = false
 
                 Alpine.store('data').clear()
-                sendWebSocketMessage(webSocketOpCodes.request, {
+                sendWebSocketMessage(webSocketOpcodes.request, {
                     t: webSocketPayloadTypes.requestGetRoomSDPOffer,
                     ['room_name']: roomName,
                     username,
@@ -105,7 +105,7 @@ const systemStore = {
             }
 
             this.webRTCPeerConnection = new RTCPeerConnection({
-                iceServers: [{urls: 'stun:stun.l.google.com:19302'}]
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
             })
 
             this.webRTCPeerConnection.ondatachannel = event => {
@@ -118,7 +118,13 @@ const systemStore = {
 
                 this.webRTCDataChannel = event.channel
                 this.webRTCDataChannel.onmessage = async message => {
-                    const data = msgpackr.unpack(new Uint8Array(message.data instanceof Blob ? await message.data.arrayBuffer() : message.data))
+                    const data = msgpackr.unpack(
+                        new Uint8Array(
+                            message.data instanceof Blob
+                                ? await message.data.arrayBuffer()
+                                : message.data
+                        )
+                    )
                     const payload = data.p
 
                     switch (payload?.t) {
@@ -176,19 +182,22 @@ const systemStore = {
                 this.webRTCDataChannel.onerror = () => reconnect()
                 this.isWebRTCConnected = true
 
-                this.webRTCHeartbeatInterval = setInterval(() => {
-                    this.webRTCHeartbeatMessageId = this.webRTCLastMessageId
-                    this.webRTCLastHeartbeatAt = Date.now()
+                this.webRTCHeartbeatInterval = setInterval(
+                    () => {
+                        this.webRTCHeartbeatMessageId = this.webRTCLastMessageId
+                        this.webRTCLastHeartbeatAt = Date.now()
 
-                    this.sendWebRTCMessage(webRTCOpCodes.heartBeat)
-                }, this.isDebug ? 1e3 : 5e3)
+                        this.sendWebRTCMessage(webRTCOpcodes.heartBeat)
+                    },
+                    this.isDebug ? 1e3 : 5e3
+                )
             }
             // this.webRTCPeerConnection.onicecandidate = event => {
             //     const candidate = event.candidate
             //
             //     if (!candidate) return
             //
-            //     sendWebSocketMessage(webSocketOpCodes.request, {
+            //     sendWebSocketMessage(webSocketOpcodes.request, {
             //         t: webSocketPayloadTypes.requestPostRoomICECandidate,
             //         candidate: candidate.candidate,
             //         'sdp_mid': candidate.sdpMid,
@@ -196,7 +205,8 @@ const systemStore = {
             //         'username_fragment': candidate.usernameFragment,
             //     })
             // }
-            this.webRTCPeerConnection.onicecandidateerror = error => console.error('ICE Candidate Error', error)
+            this.webRTCPeerConnection.onicecandidateerror = error =>
+                console.error('ICE Candidate Error', error)
             this.webRTCPeerConnection.onconnectionstatechange = event => {
                 clearTimeout(this.webRTCTimeout)
 
@@ -204,7 +214,8 @@ const systemStore = {
                     webRTCReconnect()
                 }
             }
-            this.webRTCPeerConnection.onnegotiationneeded = event => console.warn('Negotiation Needed', event)
+            this.webRTCPeerConnection.onnegotiationneeded = event =>
+                console.warn('Negotiation Needed', event)
         }
 
         const openWebSocketConnection = () => {
@@ -216,14 +227,18 @@ const systemStore = {
             clearTimeout(this.webSocketTimeout)
             clearInterval(this.webSocketHeartbeatInterval)
 
-            this.webSocket = new WebSocket(`${url.protocol === 'https:' ? 'wss' : 'ws'}://${url.host}/ws?encoding=messagePack`)
+            this.webSocket = new WebSocket(
+                `${url.protocol === 'https:' ? 'wss' : 'ws'}://${
+                    url.host
+                }/ws?encoding=messagePack`
+            )
             this.webSocket.binaryType = 'arraybuffer'
             this.webSocket.onopen = () => {
                 this.isWebSocketConnected = true
 
-                sendWebSocketMessage(webSocketOpCodes.authorize, {
+                sendWebSocketMessage(webSocketOpcodes.authorize, {
                     t: webSocketPayloadTypes.authorize,
-                    token: localStorage.getItem('token') || ''
+                    token: localStorage.getItem('token') || '',
                 })
             }
             this.webSocket.onmessage = async message => {
@@ -232,7 +247,7 @@ const systemStore = {
 
                 switch (payload?.t) {
                     case webSocketPayloadTypes.response:
-                        const setError = ({error, resetRoomNameConfirmation = false}) => {
+                        const setError = ({ error, resetRoomNameConfirmation = false }) => {
                             this.isUsernameLocallyConfirmed = false
                             this.error = error
                             this.isError = true
@@ -240,12 +255,19 @@ const systemStore = {
                             if (resetRoomNameConfirmation) {
                                 this.isRoomNameLocallyConfirmed = false
 
-                                if (history.state?.lastHref && !new URL(history.state.lastHref).searchParams.has('room-name')) {
+                                if (
+                                    history.state?.lastHref &&
+                                    !new URL(history.state.lastHref).searchParams.has('room-name')
+                                ) {
                                     history.back()
                                 } else {
                                     const url = new URL(window.location.href)
                                     url.searchParams.delete('room-name')
-                                    window.history.replaceState({lastHref: window.location.href}, null, url)
+                                    window.history.replaceState(
+                                        { lastHref: window.location.href },
+                                        null,
+                                        url
+                                    )
                                 }
                             }
 
@@ -282,19 +304,21 @@ const systemStore = {
                                 break
                         }
 
-
                         break
                     case webSocketPayloadTypes.responseSession:
                         localStorage.setItem('token', payload.token)
 
-                        this.webSocketHeartbeatInterval = setInterval(() => {
-                            this.webSocketHeartbeatMessageId = messageId
-                            this.webSocketLastHeartbeatAt = Date.now()
+                        this.webSocketHeartbeatInterval = setInterval(
+                            () => {
+                                this.webSocketHeartbeatMessageId = messageId
+                                this.webSocketLastHeartbeatAt = Date.now()
 
-                            sendWebSocketMessage(webSocketOpCodes.heartBeat)
-                        }, this.isDebug ? 1e3 : 30e3)
+                                sendWebSocketMessage(webSocketOpcodes.heartBeat)
+                            },
+                            this.isDebug ? 1e3 : 30e3
+                        )
 
-                        sendWebSocketMessage(webSocketOpCodes.request, {
+                        sendWebSocketMessage(webSocketOpcodes.request, {
                             t: webSocketPayloadTypes.requestGetRoomSDPOffer,
                             ['room_name']: roomName,
                             username,
@@ -311,7 +335,7 @@ const systemStore = {
                         const answer = await this.webRTCPeerConnection.createAnswer()
                         await this.webRTCPeerConnection.setLocalDescription(answer)
 
-                        sendWebSocketMessage(webSocketOpCodes.request, {
+                        sendWebSocketMessage(webSocketOpcodes.request, {
                             t: webSocketPayloadTypes.requestPostRoomSDPAnswer,
                             sdp: answer.sdp,
                         })
@@ -390,7 +414,7 @@ const rootData = {
 
             const url = new URL(window.location.href)
             url.searchParams.set('room-name', Base64.encodeURI(this.enteredRoomName))
-            window.history.pushState({lastHref: window.location.href}, null, url)
+            window.history.pushState({ lastHref: window.location.href }, null, url)
 
             return
         }
@@ -410,7 +434,7 @@ const rootData = {
         this.enteredMessage = this.enteredMessage.trim()
         if (this.enteredMessage === '') return
 
-        this.$store.system.sendWebRTCMessage(webRTCOpCodes.request, {
+        this.$store.system.sendWebRTCMessage(webRTCOpcodes.request, {
             t: webRTCPayloadTypes.requestPostMessage,
             content: this.enteredMessage,
         })
@@ -418,34 +442,58 @@ const rootData = {
         this.enteredMessage = ''
     },
     get canShowApp() {
-        return this.$store.system.isRoomNameLocallyConfirmed
-            && this.$store.system.isUsernameLocallyConfirmed
-            && this.$store.system.isWebSocketConnected
-            && this.$store.system.isWebRTCConnected
+        return (
+            this.$store.system.isRoomNameLocallyConfirmed &&
+            this.$store.system.isUsernameLocallyConfirmed &&
+            this.$store.system.isWebSocketConnected &&
+            this.$store.system.isWebRTCConnected
+        )
     },
     get onlineUsers() {
         let users = []
 
         this.$store.data.users.forEach(user => {
-            if (user.status === userStatuses.online && user.id !== this.$store.data.userId) users.push(user)
+            if (
+                user.status === userStatuses.online &&
+                user.id !== this.$store.data.userId
+            )
+                users.push(user)
         })
 
-        return new Promise(resolve => setTimeout(
-            () => resolve(users.sort((a, b) => a.username.localeCompare(b.username))),
-            parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fast-transition-duration').split('s')[0]) * 1000,
-        ))
+        return new Promise(resolve =>
+            setTimeout(
+                () =>
+                    resolve(users.sort((a, b) => a.username.localeCompare(b.username))),
+                parseFloat(
+                    getComputedStyle(document.documentElement)
+                        .getPropertyValue('--fast-transition-duration')
+                        .split('s')[0]
+                ) * 1000
+            )
+        )
     },
     get offlineUsers() {
         let users = []
 
         this.$store.data.users.forEach(user => {
-            if (user.status === userStatuses.offline && user.id !== this.$store.data.userId) users.push(user)
+            if (
+                user.status === userStatuses.offline &&
+                user.id !== this.$store.data.userId
+            )
+                users.push(user)
         })
 
-        return new Promise(resolve => setTimeout(
-            () => resolve(users.sort((a, b) => a.username.localeCompare(b.username))),
-            parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fast-transition-duration').split('s')[0]) * 1000,
-        ))
+        return new Promise(resolve =>
+            setTimeout(
+                () =>
+                    resolve(users.sort((a, b) => a.username.localeCompare(b.username))),
+                parseFloat(
+                    getComputedStyle(document.documentElement)
+                        .getPropertyValue('--fast-transition-duration')
+                        .split('s')[0]
+                ) * 1000
+            )
+        )
     },
     get messagesGroupedByAuthor() {
         let groups = []
@@ -453,11 +501,13 @@ const rootData = {
         let lastAuthorId = null
         let id = 0
 
-        new Map([...this.$store.data.messages].sort((a, b) => {
-            if (BigInt(a[0]) > BigInt(b[0])) return 1;
-            else if (BigInt(a[0]) === BigInt(b[0])) return 0;
-            else if (BigInt(a[0]) < BigInt(b[0])) return -1;
-        })).forEach(message => {
+        new Map(
+            [...this.$store.data.messages].sort((a, b) => {
+                if (BigInt(a[0]) > BigInt(b[0])) return 1
+                else if (BigInt(a[0]) === BigInt(b[0])) return 0
+                else if (BigInt(a[0]) < BigInt(b[0])) return -1
+            })
+        ).forEach(message => {
             if (lastAuthorId !== null && lastAuthorId !== message.authorId) {
                 groups.unshift({
                     id: id++,
@@ -489,13 +539,14 @@ const rootData = {
         const url = new URL(window.location.href)
         const roomName = url.searchParams.get('room-name')
 
-        if (roomName !== null && roomName.trim() !== '') this.enteredRoomName = Base64.decode(roomName).trim().slice(0, 32)
+        if (roomName !== null && roomName.trim() !== '')
+            this.enteredRoomName = Base64.decode(roomName).trim().slice(0, 32)
         else {
             this.enteredRoomName = ''
 
             if (allowHistoryChanging) {
                 url.searchParams.delete('room-name')
-                window.history.pushState({lastHref: window.location.href}, null, url)
+                window.history.pushState({ lastHref: window.location.href }, null, url)
             }
         }
 
@@ -506,23 +557,35 @@ const rootData = {
     },
     init() {
         this.$watch('$store.system.isRoomNameLocallyConfirmed', () => {
-            if (this.$store.system.isRoomNameLocallyConfirmed) this.lastEnteredRoomName = this.enteredRoomName
+            if (this.$store.system.isRoomNameLocallyConfirmed)
+                this.lastEnteredRoomName = this.enteredRoomName
         })
 
         const resizeObserver = new ResizeObserver(entries => {
-            if (!this.$store.system.isRoomNameLocallyConfirmed && Array.from(entries[0].target.classList).includes('room-name'))
+            if (
+                !this.$store.system.isRoomNameLocallyConfirmed &&
+                Array.from(entries[0].target.classList).includes('room-name')
+            )
                 this.generalInformationHeadingsHeight = entries[0].target.clientHeight
             else if (
-                this.$store.system.isRoomNameLocallyConfirmed
-                && !this.$store.system.isUsernameLocallyConfirmed
-                && Array.from(entries[0].target.classList).includes('username')
-            ) this.generalInformationHeadingsHeight = entries[0].target.clientHeight
+                this.$store.system.isRoomNameLocallyConfirmed &&
+                !this.$store.system.isUsernameLocallyConfirmed &&
+                Array.from(entries[0].target.classList).includes('username')
+            )
+                this.generalInformationHeadingsHeight = entries[0].target.clientHeight
         })
 
-        resizeObserver.observe(document.querySelector('#general-information > .headings > h2.room-name'))
-        resizeObserver.observe(document.querySelector('#general-information > .headings > h2.username'))
+        resizeObserver.observe(
+            document.querySelector('#general-information > .headings > h2.room-name')
+        )
+        resizeObserver.observe(
+            document.querySelector('#general-information > .headings > h2.username')
+        )
 
-        this.$store.system.isDebug = new URL(document.URL).searchParams.has('debug', 'true')
+        this.$store.system.isDebug = new URL(document.URL).searchParams.has(
+            'debug',
+            'true'
+        )
 
         window.addEventListener('popstate', () => this.checkParamRoomName())
         this.checkParamRoomName(true)
@@ -532,5 +595,5 @@ const rootData = {
 document.addEventListener('alpine:init', () => {
     Alpine.store('data', dataStore)
     Alpine.store('system', systemStore)
-    Alpine.data('root', () => (rootData))
+    Alpine.data('root', () => rootData)
 })

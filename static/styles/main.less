@@ -80,7 +80,8 @@
   --default-timing-function: cubic-bezier(0.66, 0, 0, 1);
   --default-transition-duration: 0.66s;
   --fast-transition-duration: 0.3s;
-  --default-transition: var(--default-transition-duration) var(--default-timing-function);
+  --default-transition: var(--default-transition-duration)
+  var(--default-timing-function);
 
   .screen(medium; {
     --body-line-height: 2rem;
@@ -226,7 +227,7 @@ button {
     background: var(--blue);
   }
 
-  &[data-variant=square] {
+  &[data-variant="square"] {
     width: 2.75rem;
     padding: unset;
 

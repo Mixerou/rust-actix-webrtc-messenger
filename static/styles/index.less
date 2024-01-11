@@ -314,8 +314,18 @@ main {
       width: var(--_groups-max-width);
       max-width: 100%;
       overflow-y: auto;
-      mask: linear-gradient(transparent, var(--white) var(--_groups-gap), var(--white) calc(100% - var(--_groups-gap)), transparent);
-      -webkit-mask: -webkit-linear-gradient(transparent, var(--white) var(--_groups-gap), var(--white) calc(100% - var(--_groups-gap)), transparent);
+      mask: linear-gradient(
+              transparent,
+              var(--white) var(--_groups-gap),
+              var(--white) calc(100% - var(--_groups-gap)),
+              transparent
+      );
+      -webkit-mask: -webkit-linear-gradient(
+              transparent,
+              var(--white) var(--_groups-gap),
+              var(--white) calc(100% - var(--_groups-gap)),
+              transparent
+      );
 
       .without-scrollbar;
 
@@ -335,7 +345,9 @@ main {
         }
 
         &.hide {
-          margin-top: calc(0rem - var(--_meta-height) - var(--_groups-gap) - var(--_group-gap));
+          margin-top: calc(
+                  0rem - var(--_meta-height) - var(--_groups-gap) - var(--_group-gap)
+          );
           opacity: 0;
           transform: translateY(var(--_groups-gap));
         }
@@ -430,8 +442,18 @@ main {
       gap: var(--_big-group-gap);
       width: 100%;
       overflow-y: auto;
-      mask: linear-gradient(transparent, var(--white) var(--_big-group-gap), var(--white) calc(100% - var(--_big-group-gap)), transparent);
-      -webkit-mask: -webkit-linear-gradient(transparent, var(--white) var(--_big-group-gap), var(--white) calc(100% - var(--_big-group-gap)), transparent);
+      mask: linear-gradient(
+              transparent,
+              var(--white) var(--_big-group-gap),
+              var(--white) calc(100% - var(--_big-group-gap)),
+              transparent
+      );
+      -webkit-mask: -webkit-linear-gradient(
+              transparent,
+              var(--white) var(--_big-group-gap),
+              var(--white) calc(100% - var(--_big-group-gap)),
+              transparent
+      );
 
       .without-scrollbar;
     }

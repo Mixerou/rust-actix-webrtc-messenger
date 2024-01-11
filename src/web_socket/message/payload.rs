@@ -73,24 +73,3 @@ impl Serialize for WebSocketMessagePayload {
         message.end()
     }
 }
-
-// impl From<Device> for WebSocketMessagePayload {
-//     fn from(device: Device) -> Self {
-//         let latest_data = match DeviceRecord::find_latest_by_device_id(device.id) {
-//             Ok(record) => Some(record.data),
-//             Err(_) => None,
-//         };
-//
-//         WebSocketMessagePayload::DispatchDeviceUpdate {
-//             id: device.id,
-//             external_id: device.external_id,
-//             name: device.name,
-//             status: device.status,
-//             kind: device.kind,
-//             greenhouse_id: device.greenhouse_id,
-//             created_at: device.created_at.duration_since(UNIX_EPOCH).unwrap().as_secs(),
-//             maximum_data_value: device.maximum_data_value,
-//             latest_data,
-//         }
-//     }
-// }

@@ -1,18 +1,18 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="description" content="Messenger example in Rust with Actix and WebRTC">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="description" content="Messenger example in Rust with Actix and WebRTC" />
     <title>Messenger</title>
-    <link rel="stylesheet/less" type="text/css" href="/styles/index.less">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet/less" type="text/css" href="/styles/index.less" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
             href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,600;6..12,700;6..12,900&display=swap"
             rel="stylesheet"
-    >
+    />
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.2/dist/cdn.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/less" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js"></script>
@@ -59,7 +59,7 @@
                         x-transition:enter-start="hide"
                         x-transition:leave-end="hide"
                         @keydown.enter="connect"
-                >
+                />
                 <input
                         class="username"
                         type="text"
@@ -70,7 +70,7 @@
                         x-transition:enter-start="hide"
                         x-transition:leave-end="hide"
                         @keydown.enter="connect"
-                >
+                />
             </div>
             <button @click="connect">Connect</button>
         </div>
@@ -142,7 +142,7 @@
                         maxlength="1024"
                         x-model="enteredMessage"
                         @keydown.enter="sendMessage"
-                >
+                />
                 <button @click="sendMessage">Send</button>
             </div>
 
@@ -169,7 +169,8 @@
                                 <div
                                         class="message prepare"
                                         x-data="{ isShown: false }"
-                                        :class="{ sending: message.isSending }" x-init="$nextTick(() => {
+                                        :class="{ sending: message.isSending }"
+                                        x-init="$nextTick(() => {
                                             isShown = true
                                             setTimeout(() => {
                                                 $el.style.setProperty(
@@ -198,7 +199,10 @@
         <div class="members">
             <div class="group without-margin">
                 <div class="user me">
-                    <div class="avatar" x-html="generateAvatar($store.data.users.get($store.data.userId)?.username || enteredUsername)"></div>
+                    <div
+                            class="avatar"
+                            x-html="generateAvatar($store.data.users.get($store.data.userId)?.username || enteredUsername)"
+                    ></div>
                     <span class="username" x-text="$store.data.users.get($store.data.userId)?.username"></span>
                 </div>
             </div>
