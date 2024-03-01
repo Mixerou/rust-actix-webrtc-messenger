@@ -185,41 +185,36 @@ const generateAvatar = username => {
             width="${props.size}"
             height="${props.size}"
         >
-            <mask id="mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${avatarSize}" height="${avatarSize}">
-                <rect width="${avatarSize}" height="${avatarSize}" fill="#ffffff" />
-            </mask>
-            <g mask="url(mask)">
-                <rect width="${avatarSize}" height="${avatarSize}" fill="${data.backgroundColor}" />
+            <rect width="${avatarSize}" height="${avatarSize}" fill="${data.backgroundColor}" />
+            <rect
+                x="0"
+                y="0"
+                width="${avatarSize}"
+                height="${avatarSize}"
+                transform="translate(${data.wrapperTranslateX} ${data.wrapperTranslateY}) rotate(${data.wrapperRotate} ${avatarSize / 2} ${avatarSize / 2}) scale(${data.wrapperScale})"
+                fill="${data.wrapperColor}"
+                rx="${data.isCircle ? avatarSize : avatarSize / 6}"
+            />
+            <g transform="translate(${data.faceTranslateX} ${data.faceTranslateY}) rotate(${data.faceRotate} ${avatarSize / 2} ${avatarSize / 2})">
+                ${mouth}
                 <rect
-                    x="0"
-                    y="0"
-                    width="${avatarSize}"
-                    height="${avatarSize}"
-                    transform="translate(${data.wrapperTranslateX} ${data.wrapperTranslateY}) rotate(${data.wrapperRotate} ${avatarSize / 2} ${avatarSize / 2}) scale(${data.wrapperScale})"
-                    fill="${data.wrapperColor}"
-                    rx="${data.isCircle ? avatarSize : avatarSize / 6}"
+                    x="${14 - data.eyeSpread}"
+                    y="14"
+                    width="1.5"
+                    height="2"
+                    rx="1"
+                    stroke="none"
+                    fill="${data.faceColor}"
                 />
-                <g transform="translate(${data.faceTranslateX} ${data.faceTranslateY}) rotate(${data.faceRotate} ${avatarSize / 2} ${avatarSize / 2})">
-                    ${mouth}
-                    <rect
-                        x="${14 - data.eyeSpread}"
-                        y="14"
-                        width="1.5"
-                        height="2"
-                        rx="1"
-                        stroke="none"
-                        fill="${data.faceColor}"
-                    />
-                    <rect
-                        x="${20 + data.eyeSpread}"
-                        y="14"
-                        width="1.5"
-                        height="2"
-                        rx="1"
-                        stroke="none"
-                        fill="${data.faceColor}"
-                    />
-                </g>
+                <rect
+                    x="${20 + data.eyeSpread}"
+                    y="14"
+                    width="1.5"
+                    height="2"
+                    rx="1"
+                    stroke="none"
+                    fill="${data.faceColor}"
+                />
             </g>
         </svg>
     `
