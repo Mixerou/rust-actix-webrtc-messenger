@@ -1,6 +1,6 @@
 [package]
 name = "actix-webrtc-messenger"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Ivan <contact@mixero.dev>"]
 edition = "2021"
 description = "Messenger example with Actix and WebRTC"
